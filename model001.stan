@@ -19,17 +19,17 @@ data {
   int prior_only;  // should the likelihood be ignored?
 }
 transformed data {
-  int Kc = K - 1;
-  matrix[N, Kc] Xc;  // centered version of X
-  vector[Kc] means_X;  // column means of X before centering
-  for (i in 2:K) {
-    means_X[i - 1] = mean(X[, i]);
-    Xc[, i - 1] = X[, i] - means_X[i - 1];
-  }
+  // int Kc = K - 1;
+  // matrix[N, Kc] Xc;  // centered version of X
+  // vector[Kc] means_X;  // column means of X before centering
+  // for (i in 2:K) {
+  //   means_X[i - 1] = mean(X[, i]);
+  //   Xc[, i - 1] = X[, i] - means_X[i - 1];
+  // }
 }
 parameters {
-  vector[Kc] b;  // population-level effects
-  real temp_Intercept;  // temporary intercept
+  vector[K] b;  // population-level effects
+  real b_Intercept;  // temporary intercept
   vector<lower=0>[M_1] sd_1;  // group-level standard deviations
   vector[N_1] z_1[M_1];  // unscaled group-level effects
   vector<lower=0>[M_2] sd_2;  // group-level standard deviations
@@ -42,12 +42,12 @@ transformed parameters {
   vector[N_2] r_2_1 = (sd_2[1] * (z_2[1]));
 }
 model {
-  vector[N] mu = temp_Intercept + Xc * b;
+  vector[N] mu = b_Intercept + X * b;
   for (n in 1:N) {
     mu[n] += r_1_1[J_1[n]] * Z_1_1[n] + r_2_1[J_2[n]] * Z_2_1[n];
   }
   // priors including all constants
-  target += student_t_lpdf(temp_Intercept | 3, 0, 10);
+  target += student_t_lpdf(b_Intercept | 3, 0, 10);
   target += student_t_lpdf(sd_1 | 3, 0, 10)
     - 1 * student_t_lccdf(0 | 3, 0, 10);
   target += normal_lpdf(z_1[1] | 0, 1);
@@ -59,8 +59,5 @@ model {
     target += bernoulli_logit_lpmf(Y | mu);
   }
 }
-generated quantities {
-  // actual population-level intercept
-  real b_Intercept = temp_Intercept - dot_product(means_X, b);
-}
+
 

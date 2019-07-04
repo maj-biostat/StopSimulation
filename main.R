@@ -67,9 +67,17 @@ lm1 <- glmer(y ~ 1 + tx + mnth + (1|clust_id) + (1|subj_id_full) + factor(t) ,
                                             optCtrl=list(maxfun=100000),
                                             check.conv.singular="warning"))
 
-ld <- brms::make_standata(y ~ 1 + tx + mnth + (1|clust_id) + (1|subj_id_full) + factor(t), 
+ld <- brms::make_standata(y ~ 0 + tx + mnth + (1|clust_id) + (1|subj_id_full) + factor(t), 
                           data = d, 
                           family = bernoulli())
+
+# factor for time was introduced erroneously
+ld$X <- ld$X[,-3]
+ld$K <- ncol(ld$X)
+
+lm1 <- glm(y ~ 1 + tx + mnth + as.factor(t), data = d, family = binomial)
+summary(lm1)
+
 
 myf <- file.path("model001.stan")
 mod <- rstan::stan_model(myf ,verbose = F)
@@ -79,10 +87,10 @@ mod <- rstan::stan_model(myf ,verbose = F)
 set.seed(315430)
 fit1 <- rstan::sampling(object  = mod,
                        data    = ld,
-                       chains  = 4,
+                       chains  = 6,
                        thin    = 2,
-                       iter    = 10000,
-                       refresh = 10000)
+                       iter    = 3000,
+                       refresh = 1)
 summary(fit1, pars = c("b_Intercept", "b", "sd_1", "sd_2"),
         prob = c(0.025, 0.975))$summary
 
